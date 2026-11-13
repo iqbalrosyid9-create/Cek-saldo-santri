@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Cek Saldo Santri - PPTQ Al Husna Lestari</title>
+  <meta name="theme-color" content="#047857" />
+  <meta name="description" content="Portal Cek Saldo dan Mutasi Uang Saku Santri PPTQ Al Husna Lestari Klaten" />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" type="image/png" href="./icon-192.png" />
+  <link rel="apple-touch-icon" href="./icon-192.png" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #f0fdf4;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #qr-reader video {
+      border-radius: 0.75rem !important;
+      object-fit: cover !important;
+    }
+    #qr-reader__scan_region {
+      background: transparent !important;
+    }
+    @media print {
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body class="min-h-screen text-slate-800 flex flex-col justify-between">
+
+  <!-- HEADER -->
+  <header class="bg-gradient-to-r from-emerald-800 via-emerald-700 to-teal-700 text-white shadow-md sticky top-0 z-30 no-print">
+    <div class="max-w-md mx-auto px-4 py-3.5 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center border border-white/20 shadow-inner">
+          <i class="fa-solid fa-wallet text-amber-300 text-lg"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-base leading-tight tracking-tight">Uang Saku Santri</h1>
+          <p class="text-[11px] text-emerald-100 font-medium">PPTQ Al Husna Lestari</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="btnInstallPWA" onclick="installPWA()" class="hidden bg-amber-400 hover:bg-amber-300 text-emerald-950 text-xs font-bold px-2.5 py-1.5 rounded-lg shadow transition flex items-center gap-1.5">
+          <i class="fa-solid fa-download"></i> Install
+        </button>
+        <button id="btnLogout" onclick="logoutWali()" class="hidden bg-white/15 hover:bg-white/25 text-white text-xs font-semibold px-3 py-1.5 rounded-lg border border-white/20 transition flex items-center gap-1.5">
+          <i class="fa-solid fa-right-from-bracket"></i> Keluar
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="max-w-md w-full mx-auto px-4 py-5 flex-1">
+
+    <!-- ==================== VIEW 1: LOGIN & SCAN QR ==================== -->
+    <section id="loginSection" class="space-y-4">
+      <div class="bg-white rounded-2xl shadow-sm border border-emerald-100 p-5">
+        <div class="text-center mb-4">
+          <span class="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 text-xs font-bold px-3 py-1 rounded-full border border-emerald-200 mb-2">
+            <i class="fa-solid fa-shield-halved"></i> Portal Resmi Wali Santri
+          </span>
+          <h2 class="text-lg font-extrabold text-slate-800">Cek Saldo & Mutasi</h2>
+          <p class="text-xs text-slate-500 mt-1">Scan QR Kartu Santri atau masukkan NIS dan PIN Wali untuk memantau uang saku putra/putri Anda.</p>
+        </div>
+
+        <!-- Area Scanner QR -->
+        <div class="mb-4">
+          <div id="scannerWrapper" class="hidden mb-3 bg-slate-900 rounded-xl p-2 relative overflow-hidden">
+            <div id="qr-reader" class="w-full overflow-hidden rounded-lg"></div>
+            <button type="button" onclick="stopScanner()" class="mt-2 w-full py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg transition">
+              <i class="fa-solid fa-xmark mr-1"></i> Tutup Kamera Scanner
+            </button>
+          </div>
+
+          <button type="button" id="btnStartScan" onclick="startScanner()" class="w-full py-3 px-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-2 border-dashed border-emerald-400 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition active:scale-[0.99]">
+            <i class="fa-solid fa-qrcode text-lg text-emerald-600"></i>
+            <span>Scan QR Kartu Santri</span>
+          </button>
+        </div>
+
+        <div class="relative flex py-2 items-center">
+          <div class="flex-grow border-t border-slate-200"></div>
+          <span class="flex-shrink mx-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">atau input manual</span>
+          <div class="flex-grow border-t border-slate-200"></div>
+        </div>
+
+        <!-- Form Login NIS + PIN -->
+        <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-3.5 mt-2">
+          <div>
+            <label for="inputNis" class="block text-xs font-bold text-slate-700 mb-1">Nomor Induk Santri (NIS)</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                <i class="fa-solid fa-id-card"></i>
+              </span>
+              <input type="text" id="inputNis" inputmode="numeric" required placeholder="Contoh: 111"
+                class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition" />
+            </div>
+          </div>
+
+          <div>
+            <label for="inputPin" class="block text-xs font-bold text-slate-700 mb-1">PIN Wali Santri (6 Digit)</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                <i class="fa-solid fa-lock"></i>
+              </span>
+              <input type="password" id="inputPin" inputmode="numeric" maxlength="6" required placeholder="Masukkan 6 digit PIN"
+                class="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 tracking-widest focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition" />
+              <button type="button" onclick="togglePinVisibility()" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600">
+                <i id="eyeIcon" class="fa-solid fa-eye"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between pt-1">
+            <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+              <input type="checkbox" id="rememberMe" checked class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300" />
+              <span class="text-xs text-slate-600 font-medium">Ingat NIS & PIN di HP ini</span>
+            </label>
+          </div>
+
+          <div id="loginError" class="hidden bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold px-3.5 py-2.5 rounded-xl flex items-center gap-2">
+            <i class="fa-solid fa-circle-exclamation text-rose-500"></i>
+            <span id="loginErrorText">NIS atau PIN salah.</span>
+          </div>
+
+          <button type="submit" id="btnSubmitLogin" class="w-full py-3 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-sm rounded-xl shadow-md shadow-emerald-700/20 transition flex items-center justify-center gap-2 active:scale-[0.99]">
+            <i class="fa-solid fa-magnifying-glass-dollar"></i>
+            <span>Cek Saldo Sekarang</span>
+          </button>
+        </form>
+      </div>
+
+      <!-- Bantuan Lupa PIN -->
+      <div class="bg-amber-50/90 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+        <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 mt-0.5">
+          <i class="fa-solid fa-circle-info"></i>
+        </div>
+        <div class="text-xs text-amber-900 leading-relaxed">
+          <p class="font-bold">Belum tahu atau lupa PIN Wali?</p>
+          <p class="mt-0.5 text-amber-800">Silakan hubungi Bendahara / Admin Pondok untuk mendapatkan atau mengatur ulang PIN akses putra/putri Anda.</p>
+          <a href="https://wa.me/6285743538144?text=Assalamu'alaikum%20Ustadz,%20saya%20wali%20santri%20ingin%20menanyakan%20PIN%20untuk%20cek%20saldo%20uang%20saku." target="_blank"
+            class="inline-flex items-center gap-1.5 mt-2 font-bold text-emerald-700 hover:text-emerald-800 underline">
+            <i class="fa-brands fa-whatsapp text-sm"></i> Hubungi Admin via WhatsApp
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW 2: DASHBOARD SALDO & MUTASI ==================== -->
+    <section id="dashboardSection" class="hidden space-y-4">
+
+      <div id="printableArea" class="space-y-4">
+        <!-- Kartu Identitas & Saldo Utama -->
+        <div class="bg-gradient-to-br from-emerald-800 via-emerald-700 to-teal-700 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden">
+          <div class="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white/10"></div>
+          <div class="absolute -right-2 -bottom-8 w-20 h-20 rounded-full bg-amber-400/15"></div>
+
+          <div class="flex items-start justify-between relative z-10">
+            <div>
+              <span class="text-[10px] uppercase tracking-wider font-bold bg-white/15 px-2.5 py-0.5 rounded-full text-emerald-100">
+                NIS: <span id="dispNis">-</span>
+              </span>
+              <h2 id="dispNama" class="text-lg font-extrabold mt-1.5 leading-snug">-</h2>
+              <p class="text-xs text-emerald-100 mt-0.5 flex items-center gap-2">
+                <span><i class="fa-solid fa-graduation-cap mr-1"></i>Kelas <strong id="dispKelas">-</strong></span>
+                <span>•</span>
+                <span><i class="fa-solid fa-bed mr-1"></i>Kamar <strong id="dispKamar">-</strong></span>
+              </p>
+            </div>
+            <button onclick="refreshData()" title="Perbarui Data" class="no-print w-8 h-8 rounded-lg bg-white/15 hover:bg-white/25 flex items-center justify-center text-white transition">
+              <i id="refreshIcon" class="fa-solid fa-arrows-rotate text-xs"></i>
+            </button>
+          </div>
+
+          <div class="mt-5 pt-4 border-t border-white/15 relative z-10">
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-emerald-100 font-medium">Sisa Saldo Uang Saku</span>
+              <span id="saldoBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/30 text-emerald-100 border border-emerald-300/30">
+                Saldo Aman
+              </span>
+            </div>
+            <div id="dispSaldo" class="text-3xl font-extrabold tracking-tight mt-1 text-amber-300">
+              Rp 0
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2.5 mt-4 relative z-10">
+            <div class="bg-black/15 rounded-xl p-2.5 border border-white/10">
+              <p class="text-[10px] text-emerald-200 flex items-center gap-1">
+                <i class="fa-solid fa-arrow-down text-emerald-300"></i> Total Titipan Masuk
+              </p>
+              <p id="dispTotalMasuk" class="text-xs font-bold text-white mt-0.5">Rp 0</p>
+            </div>
+            <div class="bg-black/15 rounded-xl p-2.5 border border-white/10">
+              <p class="text-[10px] text-emerald-200 flex items-center gap-1">
+                <i class="fa-solid fa-arrow-up text-rose-300"></i> Total Pemakaian
+              </p>
+              <p id="dispTotalKeluar" class="text-xs font-bold text-white mt-0.5">Rp 0</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- KARTU PENGATURAN LIMIT HARIAN KANTIN -->
+        <div class="bg-white rounded-2xl shadow-sm border border-emerald-100 p-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <div class="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-store"></i>
+              </div>
+              <div>
+                <h3 class="text-xs font-extrabold text-slate-800">Limit Jajan Kantin Harian</h3>
+                <p id="dispLimitStatus" class="text-xs font-bold text-emerald-700 mt-0.5">Tanpa Batas Harian</p>
+              </div>
+            </div>
+            <button type="button" onclick="toggleLimitForm()" class="no-print text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-lg border border-emerald-200 transition">
+              <i class="fa-solid fa-sliders mr-1"></i> Atur
+            </button>
+          </div>
+
+          <!-- Progress Pemakaian Kantin Hari Ini -->
+          <div id="limitProgressWrapper" class="hidden mt-3 pt-3 border-t border-slate-100">
+            <div class="flex justify-between text-[11px] font-semibold mb-1">
+              <span class="text-slate-500">Terpakai hari ini: <strong id="dispTerpakaiHariIni" class="text-slate-800">Rp 0</strong></span>
+              <span id="dispSisaLimit" class="text-emerald-700">Sisa: Rp 0</span>
+            </div>
+            <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+              <div id="limitProgressBar" class="h-full bg-emerald-600 rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <!-- Form Ubah Limit Harian (Tersembunyi sampai tombol Atur diklik) -->
+          <div id="limitEditForm" class="hidden no-print mt-3 pt-3 border-t border-slate-100 space-y-2.5">
+            <p class="text-[11px] text-slate-500">Pilih nominal batas maksimal jajan santri di kantin per hari:</p>
+            <div class="grid grid-cols-4 gap-1.5">
+              <button type="button" onclick="pilihPresetLimit(5000)" class="py-1.5 text-[11px] font-bold bg-slate-100 hover:bg-emerald-100 hover:text-emerald-800 rounded-lg transition">5 rb</button>
+              <button type="button" onclick="pilihPresetLimit(10000)" class="py-1.5 text-[11px] font-bold bg-slate-100 hover:bg-emerald-100 hover:text-emerald-800 rounded-lg transition">10 rb</button>
+              <button type="button" onclick="pilihPresetLimit(15000)" class="py-1.5 text-[11px] font-bold bg-slate-100 hover:bg-emerald-100 hover:text-emerald-800 rounded-lg transition">15 rb</button>
+              <button type="button" onclick="pilihPresetLimit(0)" class="py-1.5 text-[11px] font-bold bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg transition">Bebas</button>
+            </div>
+            <div class="flex gap-2">
+              <div class="relative flex-1">
+                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-xs font-bold text-slate-400">Rp</span>
+                <input type="number" id="inputLimitBaru" min="0" step="500" placeholder="0 = Tanpa batas"
+                  class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+              <button type="button" id="btnSimpanLimit" onclick="simpanLimitHarian()" class="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow-sm transition">
+                Simpan
+              </button>
+            </div>
+            <p id="limitFeedback" class="hidden text-[11px] font-semibold"></p>
+          </div>
+        </div>
+
+        <!-- Tombol Aksi Cepat Wali Santri -->
+        <div class="grid grid-cols-2 gap-2.5 no-print">
+          <button onclick="konfirmasiTopUpWA()" class="py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow-sm flex items-center justify-center gap-2 transition active:scale-[0.98]">
+            <i class="fa-brands fa-whatsapp text-base"></i>
+            <span>Konfirmasi Top-Up</span>
+          </button>
+          <button onclick="downloadPDF()" class="py-2.5 px-3 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl font-bold text-xs shadow-sm flex items-center justify-center gap-2 transition active:scale-[0.98]">
+            <i class="fa-solid fa-file-pdf text-rose-600 text-sm"></i>
+            <span>Unduh Mutasi PDF</span>
+          </button>
+        </div>
+
+        <!-- Filter & Riwayat Mutasi -->
+        <div class="bg-white rounded-2xl shadow-sm border border-emerald-100 p-4">
+          <div class="flex items-center justify-between gap-2 mb-3">
+            <div>
+              <h3 class="text-sm font-extrabold text-slate-800">Riwayat Mutasi</h3>
+              <p class="text-[11px] text-slate-400" id="mutasiCountLabel">Menampilkan semua transaksi</p>
+            </div>
+            <select id="filterBulan" onchange="renderMutasi()" class="no-print text-xs font-semibold bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+              <option value="ALL">Semua Bulan</option>
+            </select>
+          </div>
+
+          <div id="monthlySummary" class="hidden grid grid-cols-2 gap-2 mb-3 p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-xs">
+            <div>
+              <span class="text-[10px] text-slate-400 block">Masuk Bulan Ini</span>
+              <span id="filterMasuk" class="font-bold text-emerald-700">Rp 0</span>
+            </div>
+            <div>
+              <span class="text-[10px] text-slate-400 block">Keluar Bulan Ini</span>
+              <span id="filterKeluar" class="font-bold text-rose-600">Rp 0</span>
+            </div>
+          </div>
+
+          <div id="mutasiList" class="divide-y divide-slate-100"></div>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="max-w-md w-full mx-auto px-4 py-4 text-center text-[11px] text-slate-400 no-print">
+    <p class="font-semibold text-slate-500">Pondok Pesantren Tahfidzul Qur'an Al Husna Lestari</p>
+    <p class="mt-0.5">Al Husna Mobile</p>
+  </footer>
+
+  <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbwiku-hOfT9_BUWZyTOCW2VlqGp4Rim9QQ8I2BEX_pTO0EXfvh1Y27a8eNYktHRIi15/exec";
+    const ADMIN_WA = "6289678894782";
+
+    let currentSantri = null;
+    let currentPin = "";
+    let allMutasi = [];
+    let html5QrCode = null;
+    let deferredPrompt = null;
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
+    }
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      document.getElementById('btnInstallPWA').classList.remove('hidden');
+    });
+
+    function installPWA() {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(() => {
+        deferredPrompt = null;
+        document.getElementById('btnInstallPWA').classList.add('hidden');
+      });
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const params = new URLSearchParams(window.location.search);
+      const urlNis = params.get('nis') || params.get('id');
+
+      const savedNis = localStorage.getItem('wali_nis');
+      const savedPin = localStorage.getItem('wali_pin');
+
+      if (urlNis) {
+        document.getElementById('inputNis').value = urlNis;
+        if (savedNis === urlNis && savedPin) {
+          document.getElementById('inputPin').value = savedPin;
+          fetchSaldoWali(urlNis, savedPin, true);
+        } else {
+          document.getElementById('inputPin').focus();
+        }
+      } else if (savedNis && savedPin) {
+        document.getElementById('inputNis').value = savedNis;
+        document.getElementById('inputPin').value = savedPin;
+        fetchSaldoWali(savedNis, savedPin, true);
+      }
+    });
+
+    function togglePinVisibility() {
+      const pinInput = document.getElementById('inputPin');
+      const eyeIcon = document.getElementById('eyeIcon');
+      if (pinInput.type === 'password') {
+        pinInput.type = 'text';
+        eyeIcon.classList.replace('fa-eye', 'fa-eye-slash');
+      } else {
+        pinInput.type = 'password';
+        eyeIcon.classList.replace('fa-eye-slash', 'fa-eye');
+      }
+    }
+
+    function startScanner() {
+      const wrapper = document.getElementById('scannerWrapper');
+      const btnStart = document.getElementById('btnStartScan');
+      wrapper.classList.remove('hidden');
+      btnStart.classList.add('hidden');
+
+      html5QrCode = new Html5Qrcode("qr-reader");
+      html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 220, height: 220 } },
+        (decodedText) => {
+          let extractedNis = decodedText.trim();
+          try {
+            if (extractedNis.startsWith('http')) {
+              const u = new URL(extractedNis);
+              extractedNis = u.searchParams.get('nis') || u.searchParams.get('id') || extractedNis;
+            }
+          } catch (_) {}
+
+          document.getElementById('inputNis').value = extractedNis;
+          stopScanner();
+          document.getElementById('inputPin').focus();
+        },
+        () => {}
+      ).catch(() => {
+        alert("Kamera tidak dapat diakses. Pastikan izin kamera aktif atau gunakan input NIS manual.");
+        stopScanner();
+      });
+    }
+
+    function stopScanner() {
+      const wrapper = document.getElementById('scannerWrapper');
+      const btnStart = document.getElementById('btnStartScan');
+      if (html5QrCode) {
+        html5QrCode.stop().then(() => {
+          html5QrCode.clear();
+          html5QrCode = null;
+        }).catch(() => {});
+      }
+      wrapper.classList.add('hidden');
+      btnStart.classList.remove('hidden');
+    }
+
+    function handleLogin(e) {
+      e.preventDefault();
+      const nis = document.getElementById('inputNis').value.trim();
+      const pin = document.getElementById('inputPin').value.trim();
+      if (!nis || !pin) return;
+      fetchSaldoWali(nis, pin, false);
+    }
+
+    async function fetchSaldoWali(nis, pin, isAutoLogin) {
+      const btn = document.getElementById('btnSubmitLogin');
+      const errBox = document.getElementById('loginError');
+      const errText = document.getElementById('loginErrorText');
+
+      errBox.classList.add('hidden');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>Memeriksa Data...</span>';
+
+      try {
+        const url = `${API_URL}?action=cekSaldoWali&nis=${encodeURIComponent(nis)}&pin=${encodeURIComponent(pin)}`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (!data.success) {
+          throw new Error(data.error || 'NIS tidak ditemukan atau PIN salah.');
+        }
+
+        currentPin = pin;
+        if (document.getElementById('rememberMe').checked) {
+          localStorage.setItem('wali_nis', nis);
+          localStorage.setItem('wali_pin', pin);
+        } else {
+          localStorage.removeItem('wali_nis');
+          localStorage.removeItem('wali_pin');
+        }
+
+        currentSantri = data.santri;
+        allMutasi = data.mutasi || [];
+
+        renderDashboard();
+      } catch (err) {
+        if (isAutoLogin) {
+          localStorage.removeItem('wali_pin');
+        }
+        errText.textContent = err.message || 'Gagal terhubung ke server.';
+        errBox.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-magnifying-glass-dollar"></i> <span>Cek Saldo Sekarang</span>';
+      }
+    }
+
+    async function refreshData() {
+      const nis = currentSantri?.nis || localStorage.getItem('wali_nis');
+      const pin = currentPin || localStorage.getItem('wali_pin');
+      if (!nis || !pin) return;
+
+      const icon = document.getElementById('refreshIcon');
+      icon.classList.add('fa-spin');
+      await fetchSaldoWali(nis, pin, false);
+      setTimeout(() => icon.classList.remove('fa-spin'), 500);
+    }
+
+    function logoutWali() {
+      localStorage.removeItem('wali_nis');
+      localStorage.removeItem('wali_pin');
+      currentSantri = null;
+      currentPin = "";
+      allMutasi = [];
+      document.getElementById('inputPin').value = '';
+      document.getElementById('dashboardSection').classList.add('hidden');
+      document.getElementById('btnLogout').classList.add('hidden');
+      document.getElementById('loginSection').classList.remove('hidden');
+    }
+
+    // =========================================================================
+    // PENGATURAN LIMIT HARIAN KANTIN
+    // =========================================================================
+    function toggleLimitForm() {
+      const form = document.getElementById('limitEditForm');
+      const feedback = document.getElementById('limitFeedback');
+      feedback.classList.add('hidden');
+      form.classList.toggle('hidden');
+      if (!form.classList.contains('hidden')) {
+        document.getElementById('inputLimitBaru').value = currentSantri.limit_harian || 0;
+      }
+    }
+
+    function pilihPresetLimit(nominal) {
+      document.getElementById('inputLimitBaru').value = nominal;
+    }
+
+    async function simpanLimitHarian() {
+      if (!currentSantri || !currentPin) return;
+      const inputVal = Number(document.getElementById('inputLimitBaru').value);
+      const btn = document.getElementById('btnSimpanLimit');
+      const feedback = document.getElementById('limitFeedback');
+
+      if (isNaN(inputVal) || inputVal < 0) {
+        feedback.textContent = "Nominal limit tidak valid.";
+        feedback.className = "text-[11px] font-semibold text-rose-600";
+        feedback.classList.remove('hidden');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = "Menyimpan...";
+      feedback.classList.add('hidden');
+
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'setLimitWali',
+            nis: currentSantri.nis,
+            pin: currentPin,
+            limit: Math.round(inputVal)
+          })
+        });
+        const result = await res.json();
+        if (!result.success) throw new Error(result.error || "Gagal menyimpan limit.");
+
+        currentSantri.limit_harian = result.limit_harian;
+        renderLimitSection();
+
+        feedback.textContent = "Limit harian berhasil diperbarui!";
+        feedback.className = "text-[11px] font-semibold text-emerald-700";
+        feedback.classList.remove('hidden');
+
+        setTimeout(() => {
+          document.getElementById('limitEditForm').classList.add('hidden');
+        }, 1200);
+      } catch (err) {
+        feedback.textContent = err.message;
+        feedback.className = "text-[11px] font-semibold text-rose-600";
+        feedback.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Simpan";
+      }
+    }
+
+    function renderLimitSection() {
+      const limit = Number(currentSantri.limit_harian) || 0;
+      const terpakai = Number(currentSantri.terpakai_hari_ini) || 0;
+      const statusEl = document.getElementById('dispLimitStatus');
+      const progWrapper = document.getElementById('limitProgressWrapper');
+
+      if (limit <= 0) {
+        statusEl.textContent = "Tanpa Batas (Bebas)";
+        statusEl.className = "text-xs font-bold text-slate-600 mt-0.5";
+        progWrapper.classList.add('hidden');
+      } else {
+        statusEl.textContent = `Maks. ${formatRupiah(limit)} / hari`;
+        statusEl.className = "text-xs font-bold text-emerald-700 mt-0.5";
+        progWrapper.classList.remove('hidden');
+
+        const sisa = Math.max(0, limit - terpakai);
+        const persen = Math.min(100, Math.round((terpakai / limit) * 100));
+
+        document.getElementById('dispTerpakaiHariIni').textContent = formatRupiah(terpakai);
+        document.getElementById('dispSisaLimit').textContent = `Sisa: ${formatRupiah(sisa)}`;
+
+        const bar = document.getElementById('limitProgressBar');
+        bar.style.width = `${persen}%`;
+        bar.className = persen >= 90
+          ? "h-full bg-rose-500 rounded-full transition-all duration-300"
+          : persen >= 70
+            ? "h-full bg-amber-500 rounded-full transition-all duration-300"
+            : "h-full bg-emerald-600 rounded-full transition-all duration-300";
+      }
+    }
+
+    // =========================================================================
+    // RENDER DASHBOARD & MUTASI
+    // =========================================================================
+    function formatRupiah(num) {
+      const val = Number(num) || 0;
+      const prefix = val < 0 ? '-Rp ' : 'Rp ';
+      return prefix + Math.abs(val).toLocaleString('id-ID');
+    }
+
+    function formatTanggalIndo(tglStr) {
+      if (!tglStr) return '-';
+      const parts = tglStr.split('-');
+      if (parts.length !== 3) return tglStr;
+      const bulan = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+      const bIdx = parseInt(parts[1], 10) - 1;
+      return `${parts[2]} ${bulan[bIdx] || parts[1]} ${parts[0]}`;
+    }
+
+    function renderDashboard() {
+      document.getElementById('loginSection').classList.add('hidden');
+      document.getElementById('dashboardSection').classList.remove('hidden');
+      document.getElementById('btnLogout').classList.remove('hidden');
+
+      document.getElementById('dispNis').textContent = currentSantri.nis;
+      document.getElementById('dispNama').textContent = currentSantri.nama;
+      document.getElementById('dispKelas').textContent = currentSantri.kelas || '-';
+      document.getElementById('dispKamar').textContent = currentSantri.kamar || '-';
+
+      const saldo = Number(currentSantri.saldo) || 0;
+      const dispSaldo = document.getElementById('dispSaldo');
+      const badge = document.getElementById('saldoBadge');
+
+      dispSaldo.textContent = formatRupiah(saldo);
+      if (saldo < 0) {
+        dispSaldo.className = "text-3xl font-extrabold tracking-tight mt-1 text-rose-300";
+        badge.className = "text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-rose-500/30 text-rose-100 border border-rose-300/40";
+        badge.textContent = "Saldo Minus";
+      } else if (saldo <= 25000) {
+        dispSaldo.className = "text-3xl font-extrabold tracking-tight mt-1 text-amber-300";
+        badge.className = "text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/30 text-amber-100 border border-amber-300/40";
+        badge.textContent = "Saldo Menipis";
+      } else {
+        dispSaldo.className = "text-3xl font-extrabold tracking-tight mt-1 text-amber-300";
+        badge.className = "text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/30 text-emerald-100 border border-emerald-300/30";
+        badge.textContent = "Saldo Aman";
+      }
+
+      document.getElementById('dispTotalMasuk').textContent = formatRupiah(currentSantri.total_masuk);
+      document.getElementById('dispTotalKeluar').textContent = formatRupiah(currentSantri.total_keluar);
+
+      renderLimitSection();
+      populateMonthFilter();
+      renderMutasi();
+    }
+
+    function populateMonthFilter() {
+      const select = document.getElementById('filterBulan');
+      const namaBulan = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+      const monthsSet = new Set();
+
+      allMutasi.forEach(m => {
+        if (m.tanggal && m.tanggal.length >= 7) {
+          monthsSet.add(m.tanggal.slice(0, 7));
+        }
+      });
+
+      const sortedMonths = Array.from(monthsSet).sort().reverse();
+      select.innerHTML = '<option value="ALL">Semua Bulan</option>';
+      sortedMonths.forEach(ym => {
+        const [y, m] = ym.split('-');
+        const label = `${namaBulan[parseInt(m, 10) - 1] || m} ${y}`;
+        const opt = document.createElement('option');
+        opt.value = ym;
+        opt.textContent = label;
+        select.appendChild(opt);
+      });
+    }
+
+    function renderMutasi() {
+      const selectedMonth = document.getElementById('filterBulan').value;
+      const listContainer = document.getElementById('mutasiList');
+      const monthlySummary = document.getElementById('monthlySummary');
+      const countLabel = document.getElementById('mutasiCountLabel');
+
+      const filtered = selectedMonth === 'ALL'
+        ? allMutasi
+        : allMutasi.filter(m => m.tanggal && m.tanggal.startsWith(selectedMonth));
+
+      countLabel.textContent = `${filtered.length} transaksi tercatat`;
+
+      if (selectedMonth !== 'ALL') {
+        let mMasuk = 0;
+        let mKeluar = 0;
+        filtered.forEach(m => {
+          if (m.tipe === 'MASUK') mMasuk += Number(m.nominal) || 0;
+          else mKeluar += Number(m.nominal) || 0;
+        });
+        document.getElementById('filterMasuk').textContent = formatRupiah(mMasuk);
+        document.getElementById('filterKeluar').textContent = formatRupiah(mKeluar);
+        monthlySummary.classList.remove('hidden');
+      } else {
+        monthlySummary.classList.add('hidden');
+      }
+
+      if (filtered.length === 0) {
+        listContainer.innerHTML = `
+          <div class="py-8 text-center text-slate-400">
+            <i class="fa-solid fa-receipt text-2xl mb-2 opacity-50"></i>
+            <p class="text-xs font-medium">Belum ada riwayat transaksi pada periode ini.</p>
+          </div>
+        `;
+        return;
+      }
+
+      listContainer.innerHTML = filtered.map(item => {
+        const isMasuk = item.tipe === 'MASUK';
+        const iconClass = isMasuk
+          ? 'bg-emerald-100 text-emerald-700'
+          : 'bg-rose-100 text-rose-600';
+        const amountClass = isMasuk ? 'text-emerald-700' : 'text-rose-600';
+        const sign = isMasuk ? '+' : '-';
+
+        return `
+          <div class="py-3 flex items-center justify-between gap-3">
+            <div class="flex items-start gap-3 min-w-0">
+              <div class="w-9 h-9 rounded-xl ${iconClass} flex items-center justify-center shrink-0 mt-0.5">
+                <i class="fa-solid ${isMasuk ? 'fa-arrow-down' : 'fa-arrow-up'} text-xs"></i>
+              </div>
+              <div class="min-w-0">
+                <p class="text-xs font-bold text-slate-800 truncate">${item.kategori}</p>
+                <p class="text-[11px] text-slate-500 truncate">${item.keterangan || '-'}</p>
+                <p class="text-[10px] text-slate-400 mt-0.5">${formatTanggalIndo(item.tanggal)}</p>
+              </div>
+            </div>
+            <div class="text-right shrink-0">
+              <p class="text-xs font-extrabold ${amountClass}">${sign} ${formatRupiah(item.nominal)}</p>
+              <span class="inline-block text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${isMasuk ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}">
+                ${isMasuk ? 'Masuk' : 'Keluar'}
+              </span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function konfirmasiTopUpWA() {
+      if (!currentSantri) return;
+      const pesan = `Assalamu'alaikum Admin PPTQ Al Husna Lestari,%0A%0ASaya wali santri dari:%0A• Nama: *${encodeURIComponent(currentSantri.nama)}*%0A• NIS: *${encodeURIComponent(currentSantri.nis)}*%0A• Kelas: *${encodeURIComponent(currentSantri.kelas)}*%0A%0AIngin melakukan konfirmasi transfer top-up uang saku sebesar: *Rp ...*%0A(Berikut saya lampirkan bukti transfernya)`;
+      window.open(`https://wa.me/${ADMIN_WA}?text=${pesan}`, '_blank');
+    }
+
+    function downloadPDF() {
+      if (!currentSantri) return;
+      const element = document.getElementById('printableArea');
+      const opt = {
+        margin: 0.4,
+        filename: `Mutasi_Uang_Saku_${currentSantri.nis}_${currentSantri.nama.replace(/\s+/g, '_')}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+      };
+      html2pdf().set(opt).from(element).save();
+    }
+  </script>
+</body>
+</html>
