@@ -1,4 +1,4 @@
-const CACHE_NAME = 'saldo-santri-v1';
+const CACHE_NAME = 'saldo-santri-v2';
 const ASSETS = [
   './',
   './index.html',
