@@ -1,4 +1,4 @@
-const CACHE_NAME = 'saldo-santri-v2';
+const CACHE_NAME = 'saldo-santri-auto-update-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -8,10 +8,10 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
   );
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -26,15 +26,24 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Jangan cache request ke Google Apps Script agar saldo selalu real-time
-  if (event.request.url.includes('script.google.com')) {
-    event.respondWith(fetch(event.request));
+  if (event.request.method !== 'GET' || event.request.url.includes('script.google.com')) {
     return;
   }
 
+  // NETWORK-FIRST: Selalu ambil versi terbaru dari server GitHub terlebih dahulu
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      return cached || fetch(event.request).catch(() => caches.match('./index.html'));
-    })
+    fetch(event.request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone);
+          });
+        }
+        return networkResponse;
+      })
+      .catch(() => {
+        return caches.match(event.request).then((cached) => cached || caches.match('./index.html'));
+      })
   );
 });
