@@ -197,13 +197,13 @@
           <div class="grid grid-cols-2 gap-2.5 mt-4 relative z-10">
             <div class="bg-black/15 rounded-xl p-2.5 border border-white/10">
               <p class="text-[10px] text-emerald-200 flex items-center gap-1">
-                <i class="fa-solid fa-arrow-down text-emerald-300"></i> Total Titipan Masuk
+                <i class="fa-solid fa-plus text-emerald-300"></i> Total Titipan Masuk
               </p>
               <p id="dispTotalMasuk" class="text-xs font-bold text-white mt-0.5">Rp 0</p>
             </div>
             <div class="bg-black/15 rounded-xl p-2.5 border border-white/10">
               <p class="text-[10px] text-emerald-200 flex items-center gap-1">
-                <i class="fa-solid fa-arrow-up text-rose-300"></i> Total Pemakaian
+                <i class="fa-solid fa-minus text-rose-300"></i> Total Pemakaian
               </p>
               <p id="dispTotalKeluar" class="text-xs font-bold text-white mt-0.5">Rp 0</p>
             </div>
@@ -238,7 +238,7 @@
             </div>
           </div>
 
-          <!-- Form Ubah Limit Harian (Tersembunyi sampai tombol Atur diklik) -->
+          <!-- Form Ubah Limit Harian -->
           <div id="limitEditForm" class="hidden no-print mt-3 pt-3 border-t border-slate-100 space-y-2.5">
             <p class="text-[11px] text-slate-500">Pilih nominal batas maksimal jajan santri di kantin per hari:</p>
             <div class="grid grid-cols-4 gap-1.5">
@@ -320,9 +320,24 @@
     let html5QrCode = null;
     let deferredPrompt = null;
 
+    // Registrasi Service Worker dengan Auto-Update & Auto-Reload
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(() => {});
+        navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then((reg) => {
+          reg.update();
+          document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') reg.update();
+          });
+
+          reg.addEventListener('updatefound', () => {
+            const newWorker = reg.installing;
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                window.location.reload();
+              }
+            });
+          });
+        }).catch(() => {});
       });
     }
 
@@ -716,7 +731,7 @@
           <div class="py-3 flex items-center justify-between gap-3">
             <div class="flex items-start gap-3 min-w-0">
               <div class="w-9 h-9 rounded-xl ${iconClass} flex items-center justify-center shrink-0 mt-0.5">
-                <i class="fa-solid ${isMasuk ? 'fa-arrow-down' : 'fa-arrow-up'} text-xs"></i>
+                <i class="fa-solid ${isMasuk ? 'fa-plus' : 'fa-minus'} text-xs"></i>
               </div>
               <div class="min-w-0">
                 <p class="text-xs font-bold text-slate-800 truncate">${item.kategori}</p>
